@@ -49,20 +49,12 @@ module.exports = function (app) {
         const project = req.params.project;
         const query = req.query;
         query.project = project;
-        const queryRes = await Issue.find(query);
-        res.json({
-          _id: queryRes._id,
-          issue_title: queryRes.issue_title,
-          issue_text: queryRes.issue_text,
-          created_on: queryRes.created_on,
-          updated_on: queryRes.updated_on,
-          created_by: queryRes.created_by,
-          assigned_to: queryRes.assigned_to,
-          open: queryRes.open,
-          status_text: queryRes.status_text,
-        });
+        const queryRes = await Issue.find(query).select(
+          "_id issue_title issue_text created_on updated_on created_by assigned_to open status_text"
+        );
+        res.json(queryRes);
       } catch (err) {
-        console.error("Error retrieving response:", error);
+        res.send(err);
       }
     })
 
