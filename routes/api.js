@@ -101,15 +101,11 @@ module.exports = function (app) {
 
     .post(async (req, res) => {
       try {
-        let project = req.params.project;
-        console.log(req.params);
-
-        let createDate = new Date();
-
+        const project = req.params.project;
         if (
-          req.body.issue_title == "" ||
-          req.body.issue_text == "" ||
-          req.body.created_by == ""
+          !req.body.issue_title ||
+          !req.body.issue_text ||
+          !req.body.created_by
         ) {
           res.json({ error: "required field(s) missing" });
         }
@@ -145,6 +141,7 @@ module.exports = function (app) {
           });
       } catch (err) {
         console.log(err);
+        res.json({ error: "required field(s) missing" });
       }
     })
 
