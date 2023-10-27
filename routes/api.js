@@ -59,7 +59,19 @@ module.exports = function (app) {
       });
       const response = await newIssue.save();
 
-      res.json(response);
+      const showObj = {
+        assigned_to: response.assigned_to,
+        status_text: response.status_text,
+        open: response.open,
+        _id: response._id,
+        issue_title: response.issue_title,
+        issue_text: response.issue_text,
+        created_by: response.created_by,
+        created_on: response.created_on,
+        updated_on: response.updated_on,
+      };
+
+      res.json(showObj);
     })
 
     .put(async (req, res) => {
