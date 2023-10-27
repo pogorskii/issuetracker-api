@@ -44,50 +44,26 @@ const Issue = mongoose.model("Issue", issueSchema);
 module.exports = function (app) {
   app
     .route("/api/issues/:project")
-
-    // .get(async (req, res) => {
-    //   const project = req.params.project;
-
-    //   const query = { project };
-    //   if (req.query.issue_title) query.issue_title = req.query.issue_title;
-    //   if (req.query.issue_text) query.issue_text = req.query.issue_text;
-    //   if (req.query.created_by) query.created_by = req.query.created_by;
-    //   if (req.query.assigned_to) query.assigned_to = req.query.assigned_to;
-    //   if (req.query.status_text) query.status_text = req.query.status_text;
-    //   if (req.query.open !== undefined) query.open = req.query.open;
-
-    //   const response = await Issue.find(query);
-    //   if (!response) res.send("Could not find tracked issues.");
-
-    //   res.json(response);
-    // })
-
-    .get(function (req, res) {
-      let project = req.params.project;
-      const query = req.query;
-      query.project = project;
-      console.log(req.query);
-      Issue.find(query)
-        .then((list) => {
-          const reorderList = list.map((issue) => {
-            return {
-              _id: issue._id,
-              issue_title: issue.issue_title,
-              issue_text: issue.issue_text,
-              created_on: issue.created_on,
-              updated_on: issue.updated_on,
-              created_by: issue.created_by,
-              assigned_to: issue.assigned_to,
-              open: issue.open,
-              status_text: issue.status_text,
-            };
-          });
-
-          res.send(reorderList);
-        })
-        .catch((error) => {
-          console.error("Error retrieving response:", error);
+    .get(async (req, res) => {
+      try {
+        const project = req.params.project;
+        const query = req.query;
+        query.project = project;
+        const queryRes = await Issue.find(query);
+        res.json({
+          _id: queryRes._id,
+          issue_title: queryRes.issue_title,
+          issue_text: queryRes.issue_text,
+          created_on: queryRes.created_on,
+          updated_on: queryRes.updated_on,
+          created_by: queryRes.created_by,
+          assigned_to: queryRes.assigned_to,
+          open: queryRes.open,
+          status_text: queryRes.status_text,
         });
+      } catch (err) {
+        console.error("Error retrieving response:", error);
+      }
     })
 
     // .post(async (req, res) => {
@@ -292,8 +268,7 @@ module.exports = function (app) {
           { _id: req.body._id },
           { updated_on: new Date() },
           { new: true }
-        )
-        .catch((err) => {
+        ).catch((err) => {
           return res.json({ error: "could not update", _id: req.body._id });
           console.log(err);
         });
