@@ -1,121 +1,113 @@
 "use strict";
 const express = require("express");
-const bodyParser = require("body-parser");
+let bodyParser = require("body-parser");
+let mongoose = require("mongoose");
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-const mongoose = require("mongoose");
-
-const { Schema } = mongoose;
-
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("Failed to connect to MongoDB:", err));
-
-// Create Schema
-const issueSchema = new Schema({
-  project: {
-    type: String,
-    required: true,
-  },
-  assigned_to: {
-    type: String,
-    default: "",
-  },
-  status_text: {
-    type: String,
-    default: "",
-  },
-  open: { type: Boolean, default: true },
+const issueSchema = new mongoose.Schema({
   issue_title: {
     type: String,
     required: true,
   },
+
   issue_text: {
     type: String,
     required: true,
   },
-  created_by: {
-    type: String,
-    required: true,
+
+  created_on: {
+    type: Date,
+    default: Date.now,
   },
-  created_on: { type: Date, default: Date.now },
+
   updated_on: {
     type: Date,
     default: Date.now,
   },
+
+  created_by: {
+    type: String,
+    required: true,
+  },
+
+  assigned_to: {
+    type: String,
+    default: "",
+  },
+
+  open: {
+    type: Boolean,
+    default: true,
+  },
+
+  status_text: {
+    type: String,
+    default: "",
+  },
+
+  project: {
+    type: String,
+    required: true,
+  },
 });
 
-// Create Model
-const Issue = mongoose.model("Issue", issueSchema);
+let issueData = mongoose.model("issueData", issueSchema);
 
 module.exports = function (app) {
   app
     .route("/api/issues/:project")
-    .get(async (req, res) => {
-      try {
-        const project = req.params.project;
-        const query = req.query;
-        query.project = project;
-        const queryRes = await Issue.find(query).select(
-          "_id issue_title issue_text created_on updated_on created_by assigned_to open status_text"
-        );
-        res.json(queryRes);
-      } catch (err) {
-        res.send(err);
-      }
+
+    .get(function (req, res) {
+      let project = req.params.project;
+      const query = req.query;
+      query.project = project;
+      console.log(req.query);
+      issueData
+        .find(query)
+        .then((list) => {
+          const reorderList = list.map((issue) => {
+            return {
+              _id: issue._id,
+              issue_title: issue.issue_title,
+              issue_text: issue.issue_text,
+              created_on: issue.created_on,
+              updated_on: issue.updated_on,
+              created_by: issue.created_by,
+              assigned_to: issue.assigned_to,
+              open: issue.open,
+              status_text: issue.status_text,
+            };
+          });
+
+          res.send(reorderList);
+        })
+        .catch((error) => {
+          console.error("Error retrieving response:", error);
+        });
     })
-
-    // .post(async (req, res) => {
-    //   const project = req.params.project;
-    //   const { issue_title, issue_text, created_by, assigned_to, status_text } =
-    //     req.body;
-    //   if (issue_title == "" || issue_text == "" || created_by == "")
-    //     return res.json({ error: "required field(s) missing" });
-    //   const newIssue = new Issue({
-    //     project,
-    //     assigned_to,
-    //     status_text,
-    //     issue_title,
-    //     issue_text,
-    //     created_by,
-    //     created_on: new Date(),
-    //     updated_on: new Date(),
-    //   });
-    //   const response = await newIssue.save();
-
-    //   const showObj = {
-    //     assigned_to: response.assigned_to,
-    //     status_text: response.status_text,
-    //     open: response.open,
-    //     _id: response._id,
-    //     issue_title: response.issue_title,
-    //     issue_text: response.issue_text,
-    //     created_by: response.created_by,
-    //     created_on: response.created_on,
-    //     updated_on: response.updated_on,
-    //   };
-
-    //   res.json(showObj);
-    // })
 
     .post(async (req, res) => {
       try {
-        const project = req.params.project;
+        let project = req.params.project;
+        console.log(req.params);
+
+        let createDate = new Date();
+
         if (
-          !req.body.issue_title ||
-          !req.body.issue_text ||
-          !req.body.created_by
+          req.body.issue_title == "" ||
+          req.body.issue_text == "" ||
+          req.body.created_by == ""
         ) {
           res.json({ error: "required field(s) missing" });
         }
 
-        const newIssue = new Issue({
+        const newIssue = new issueData({
           project: project,
           issue_title: req.body.issue_title,
           issue_text: req.body.issue_text,
@@ -146,36 +138,8 @@ module.exports = function (app) {
           });
       } catch (err) {
         console.log(err);
-        res.json({ error: "required field(s) missing" });
       }
     })
-
-    // .put(async (req, res) => {
-    //   if (!req.body._id) return res.json({ error: "missing _id" });
-    //   const id = req.body._id;
-
-    //   const project = req.params.project;
-
-    //   const query = { project };
-    //   if (req.body.issue_title) query.issue_title = req.body.issue_title;
-    //   if (req.body.issue_text) query.issue_text = req.body.issue_text;
-    //   if (req.body.created_by) query.created_by = req.body.created_by;
-    //   if (req.body.assigned_to) query.assigned_to = req.body.assigned_to;
-    //   if (req.body.status_text) query.status_text = req.body.status_text;
-    //   if (req.body.open !== undefined) query.open = req.body.open;
-
-    //   if (query === {})
-    //     return res.json({ error: "no update field(s) sent", _id: id });
-    //   query.updated_on = new Date();
-
-    //   let response;
-    //   try {
-    //     response = await Issue.findByIdAndUpdate(id, query);
-    //   } catch (err) {
-    //     return res.json({ error: "could not update", _id: id });
-    //   }
-    //   res.json(response);
-    // })
 
     .put(async (req, res) => {
       try {
@@ -209,7 +173,7 @@ module.exports = function (app) {
           return;
         }
 
-        const data = await Issue.findById(req.body._id);
+        const data = await issueData.findById(req.body._id);
         if (!data) {
           res.json({ error: "could not update", _id: req.body._id });
 
@@ -218,7 +182,7 @@ module.exports = function (app) {
 
         /*start of updates*/
         if (req.body.issue_title != "") {
-          Issue.findOneAndUpdate(
+          issueData.findOneAndUpdate(
             { _id: req.body._id },
             { issue_title: req.body.issue_title },
             { new: true }
@@ -226,7 +190,7 @@ module.exports = function (app) {
         }
 
         if (!req.body.issue_text != "") {
-          Issue.findOneAndUpdate(
+          issueData.findOneAndUpdate(
             { _id: req.body._id },
             { issue_text: req.body.issue_text },
             { new: true }
@@ -234,7 +198,7 @@ module.exports = function (app) {
         }
 
         if (req.body.created_by != "") {
-          Issue.findOneAndUpdate(
+          issueData.findOneAndUpdate(
             { _id: req.body._id },
             { created_by: req.body.created_by },
             { new: true }
@@ -243,7 +207,7 @@ module.exports = function (app) {
         }
 
         if (req.body.assigned_to != "") {
-          Issue.findOneAndUpdate(
+          issueData.findOneAndUpdate(
             { _id: req.body._id },
             { assigned_to: req.body.assigned_to },
             { new: true }
@@ -251,7 +215,7 @@ module.exports = function (app) {
         }
 
         if (req.body.status_text != "") {
-          Issue.findOneAndUpdate(
+          issueData.findOneAndUpdate(
             { _id: req.body._id },
             { status_text: req.body.status_text },
             { new: true }
@@ -259,21 +223,24 @@ module.exports = function (app) {
         }
 
         if (req.body.open == "false") {
-          Issue.findOneAndUpdate(
+          issueData.findOneAndUpdate(
             { _id: req.body._id },
             { open: req.body.open },
             { new: true }
           );
         }
 
-        Issue.findOneAndUpdate(
-          { _id: req.body._id },
-          { updated_on: new Date() },
-          { new: true }
-        ).catch((err) => {
-          return res.json({ error: "could not update", _id: req.body._id });
-          console.log(err);
-        });
+        issueData
+          .findOneAndUpdate(
+            { _id: req.body._id },
+            { updated_on: new Date() },
+            { new: true }
+          )
+
+          .catch((err) => {
+            return res.json({ error: "could not update", _id: req.body._id });
+            console.log(err);
+          });
 
         res.json({ result: "successfully updated", _id: req.body._id });
       } catch (err) {
@@ -300,7 +267,7 @@ module.exports = function (app) {
           return;
         }
 
-        let delData = await Issue.findOne({ _id: req.body._id });
+        let delData = await issueData.findOne({ _id: req.body._id });
 
         console.log(delData + "delete");
         if (!delData) {
@@ -308,7 +275,7 @@ module.exports = function (app) {
           return;
         }
 
-        Issue.findByIdAndRemove(req.body._id).then(() => {
+        issueData.findByIdAndRemove(req.body._id).then(() => {
           res.json({ result: "successfully deleted", _id: req.body._id });
         });
       } catch (err) {
